@@ -2,10 +2,9 @@
 //   1) 진입 직전 전면광고 1회 (showInterstitial)
 //   2) 무료: 백엔드가 내려준 headline + 첫 섹션
 //   3) 잠긴 영역: IAP 영수증 / 보상형 광고 토큰을 서버에 보내 프리미엄 해제
-// TODO(검수): RN primitives → TDS 컴포넌트로 교체.
 
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, Share } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, Share } from 'react-native';
 import type { BirthInput } from '../App';
 import {
   fetchFortune,
@@ -16,6 +15,7 @@ import {
 import { showInterstitial, showRewarded } from '../services/ads';
 import { purchase, PRODUCTS } from '../services/iap';
 import { buildShareMessage } from '../share.mjs';
+import { Button, Section, LuckyItems } from '../components/tds';
 
 type Premium = {
   sections: { title: string; body: string }[];
@@ -71,12 +71,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
         >
           {state.error}
         </Text>
-        <Pressable onPress={load} accessibilityRole="button" style={primaryBtn}>
-          <Text style={primaryTxt}>다시 시도</Text>
-        </Pressable>
-        <Pressable onPress={onBack} accessibilityRole="button" style={ghostBtn}>
-          <Text>다시 입력하기</Text>
-        </Pressable>
+        <Button label="다시 시도" onPress={load} variant="primary" />
+        <Button label="다시 입력하기" onPress={onBack} variant="ghost" />
       </Centered>
     );
   }
@@ -130,9 +126,7 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
         <Section key={i} title={s.title} body={s.body} />
       ))}
 
-      <Pressable onPress={onShare} accessibilityRole="button" style={shareBtn}>
-        <Text style={{ color: '#1b64da', fontWeight: '600' }}>친구에게 공유하기</Text>
-      </Pressable>
+      <Button label="친구에게 공유하기" onPress={onShare} variant="share" />
 
       {fortune.locked && !premium && (
         <View style={lockedCard}>
@@ -143,12 +137,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
           <Text style={{ color: '#6b7684', fontSize: 13 }}>
             전체 운세를 열어 행운의 색·숫자·방향까지 함께 받아보세요.
           </Text>
-          <Pressable onPress={unlockByPurchase} accessibilityRole="button" style={primaryBtn}>
-            <Text style={primaryTxt}>전체 운세 해제</Text>
-          </Pressable>
-          <Pressable onPress={unlockByAd} accessibilityRole="button" style={ghostBtn}>
-            <Text>광고 보고 무료로 해제</Text>
-          </Pressable>
+          <Button label="전체 운세 해제" onPress={unlockByPurchase} variant="primary" />
+          <Button label="광고 보고 무료로 해제" onPress={unlockByAd} variant="ghost" />
           {unlockMsg ? (
             <Text
               accessibilityLiveRegion="polite"
@@ -171,41 +161,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
         </>
       )}
 
-      <Pressable onPress={onBack} accessibilityRole="button" style={ghostBtn}>
-        <Text>다시 입력하기</Text>
-      </Pressable>
+      <Button label="다시 입력하기" onPress={onBack} variant="ghost" />
     </ScrollView>
-  );
-}
-
-function Section({ title, body }: { title: string; body: string }) {
-  return (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontWeight: '700', fontSize: 16 }}>{title}</Text>
-      <Text style={{ lineHeight: 23, color: '#333d4b' }}>{body}</Text>
-    </View>
-  );
-}
-
-function LuckyItems({ items }: { items: LuckyItemsData }) {
-  const chips = [
-    items.color && { k: '행운의 색', v: items.color },
-    items.number != null && { k: '행운의 숫자', v: String(items.number) },
-    items.direction && { k: '행운의 방향', v: items.direction },
-  ].filter(Boolean) as { k: string; v: string }[];
-  if (chips.length === 0) return null;
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {chips.map((c) => (
-        <View
-          key={c.k}
-          style={{ backgroundColor: '#f2f4f6', borderRadius: 10, padding: 12, minWidth: 96 }}
-        >
-          <Text style={{ fontSize: 12, color: '#8b95a1' }}>{c.k}</Text>
-          <Text style={{ fontSize: 16, fontWeight: '700' }}>{c.v}</Text>
-        </View>
-      ))}
-    </View>
   );
 }
 
@@ -248,28 +205,6 @@ function formatDate(iso: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.replace(/-/g, '.') : iso;
 }
 
-const primaryBtn = {
-  backgroundColor: '#3182f6',
-  padding: 14,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
-const primaryTxt = { color: 'white', fontWeight: '700' } as const;
-const ghostBtn = {
-  borderWidth: 1,
-  borderColor: '#dfe3e8',
-  padding: 14,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
-const shareBtn = {
-  borderWidth: 1,
-  borderColor: '#c6dafc',
-  backgroundColor: '#f4f8ff',
-  padding: 12,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
 const lockedCard = {
   borderWidth: 1,
   borderColor: '#eaedf1',
