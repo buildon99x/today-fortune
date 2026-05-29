@@ -9,9 +9,11 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
     "dev": "ait dev",
     "build": "ait build",
-    "deploy": "ait deploy"
+    "deploy": "ait deploy",
+    "prepare": "husky"
   },
   "dependencies": {
     "@apps-in-toss/framework": "latest",
@@ -24,9 +26,20 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
     "prettier": "^3.8.3",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.60.0"
+  },
+  "lint-staged": {
+    "*.{mjs,js,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "comment": "react/react-native/@apps-in-toss/framework 버전은 `ait init`이 생성하는 값으로 맞추세요. test 스크립트만 이 환경에서 검증됨."
 }
