@@ -13,15 +13,21 @@
 ## 변경 후 항상 실행 (통과 못 한 채 끝내지 마라)
 
 ```bash
-# 전체 (서버 140 + 클라이언트 10 = 150 tests)
+# 테스트 — 전체(서버 140 + 클라 10 = 150) / 서버만 / 클라만
 node --test
-
-# 서버만 (140 tests)
 cd server && node --test
-
-# 클라이언트만 (10 tests)
 node --test 'src/__tests__/*.test.mjs'
+
+# 린트 + 포맷 (루트에서, 서버 .mjs + 클라 .ts/.tsx 전체)
+npm run lint            # eslint . — 정합성 + 프라이버시 invariant 룰
+npm run format:check    # prettier --check .
+npm run lint:fix        # 자동 수정
+npm run format          # prettier --write .
 ```
+
+ESLint(`eslint.config.mjs`)는 포맷을 Prettier에 위임하고 **버그·프라이버시 invariant**에 집중한다. 두 커스텀 룰이 AGENTS.md를 코드로 강제한다:
+- `no-restricted-imports` — handler/app/core에서 LLM 클라이언트 직접 import 차단 (§2.1, 라우터 경유 강제)
+- `no-restricted-syntax` — `console.*`에 `body/profile/ip/receipt/proof` 식별자 직접 전달 차단 (§1.4)
 
 보안·프라이버시 파일(§아래 안티패턴 표의 대상)을 건드렸다면 자기 승인하지 말고 별도 `security-reviewer` 에이전트를 호출한다.
 

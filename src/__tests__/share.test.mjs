@@ -48,7 +48,8 @@ test('빈/누락 입력 — 안전하게 동작', () => {
 
 test('ack가 첫 문장이지만 60자 초과 시 컷', () => {
   // 마침표가 없거나 매우 긴 첫 문장
-  const longSentence = '오늘 하루는 매우 길고 복잡한 흐름이 비치는데 거기엔 평소와는 다른 새로운 어떤 결이 함께 들어있어요';
+  const longSentence =
+    '오늘 하루는 매우 길고 복잡한 흐름이 비치는데 거기엔 평소와는 다른 새로운 어떤 결이 함께 들어있어요';
   const msg = buildShareMessage({
     acknowledgement: longSentence,
     headline: '오늘의 헤드라인',

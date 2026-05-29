@@ -15,7 +15,11 @@ const OAUTH_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 
 function base64url(buf) {
-  return Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return Buffer.from(buf)
+    .toString('base64')
+    .replace(/=+$/, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
 }
 
 function defaultSignJwt(claim, privateKeyPem) {
@@ -40,7 +44,8 @@ export function createGoogleVerifier({
   }
   if (typeof fetchImpl !== 'function') throw new Error('fetch가 필요합니다.');
 
-  const sa = typeof serviceAccountJson === 'string' ? JSON.parse(serviceAccountJson) : serviceAccountJson;
+  const sa =
+    typeof serviceAccountJson === 'string' ? JSON.parse(serviceAccountJson) : serviceAccountJson;
   if (!sa.client_email || !sa.private_key) {
     throw new Error('서비스 계정 JSON에 client_email/private_key가 없습니다.');
   }

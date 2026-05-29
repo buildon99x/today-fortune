@@ -6,6 +6,9 @@ const BASE = process.env.FORTUNE_BACKEND_URL ?? 'https://your-backend.example.co
 
 export type FortuneType = 'daily' | 'saju' | 'love' | 'wealth';
 
+/** 프리미엄 행운 아이템(서버 계약). 모든 필드 선택적. */
+export type LuckyItemsData = { color?: string; number?: number; direction?: string };
+
 export type FreeFortune = {
   acknowledgement: string;
   headline: string;
@@ -36,7 +39,8 @@ export async function fetchFortune(input: FortuneRequest): Promise<FreeFortune> 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toBody(input)),
   });
-  if (res.status === 429) throw new Error('지금은 많은 분이 같은 흐름을 찾고 있어요. 잠시 후 다시 닿아볼게요.');
+  if (res.status === 429)
+    throw new Error('지금은 많은 분이 같은 흐름을 찾고 있어요. 잠시 후 다시 닿아볼게요.');
   if (res.status === 400) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error ?? '입력을 한 번만 더 살펴봐 주실래요?');
@@ -52,13 +56,20 @@ export async function fetchFortune(input: FortuneRequest): Promise<FreeFortune> 
 export async function unlockFortune(
   input: FortuneRequest,
   proof: { type: 'iap'; receipt: string } | { type: 'rewarded_ad'; token: string },
-): Promise<{ sections: { title: string; body: string }[]; advice: string; luckyItems: unknown }> {
+): Promise<{
+  sections: { title: string; body: string }[];
+  advice: string;
+  luckyItems: LuckyItemsData | null;
+}> {
   const res = await fetch(`${BASE}/api/fortune/unlock`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...toBody(input), proof }),
   });
   if (res.status === 501) throw new Error('전체 운세는 곧 열어드릴 수 있게 준비 중이에요.');
-  if (!res.ok) throw new Error('전체 운세를 펼치는 중에 흐름이 잠깐 흐트러졌어요. 다시 한 번 시도해 주실래요?');
+  if (!res.ok)
+    throw new Error(
+      '전체 운세를 펼치는 중에 흐름이 잠깐 흐트러졌어요. 다시 한 번 시도해 주실래요?',
+    );
   return res.json();
 }

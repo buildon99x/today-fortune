@@ -3,10 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  claudeCliFortuneLlm,
-  claudeCliJudgeLlm,
-} from '../src/claude-cli-client.mjs';
+import { claudeCliFortuneLlm, claudeCliJudgeLlm } from '../src/claude-cli-client.mjs';
 
 test('두 어댑터 모두 함수로 export', () => {
   assert.equal(typeof claudeCliFortuneLlm, 'function');

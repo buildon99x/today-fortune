@@ -37,7 +37,12 @@ export function HomeScreen({
   const error = useMemo(
     () =>
       filled
-        ? firstBirthInputError({ year: Number(year), month: Number(month), day: Number(day), gender })
+        ? firstBirthInputError({
+            year: Number(year),
+            month: Number(month),
+            day: Number(day),
+            gender,
+          })
         : null,
     [filled, year, month, day, gender],
   );
@@ -101,7 +106,12 @@ export function HomeScreen({
         <Text style={label}>성별</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {GENDERS.map((g) => (
-            <Chip key={g.id} active={gender === g.id} label={g.label} onPress={() => setGender(g.id)} />
+            <Chip
+              key={g.id}
+              active={gender === g.id}
+              label={g.label}
+              onPress={() => setGender(g.id)}
+            />
           ))}
         </View>
       </View>

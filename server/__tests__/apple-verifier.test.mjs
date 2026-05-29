@@ -16,14 +16,14 @@ const baseOpts = {
 };
 
 test('factory rejects missing bundleId', async () => {
-  await assert.rejects(() => createAppleVerifier({ ...baseOpts, bundleId: undefined }), /BUNDLE_ID/);
+  await assert.rejects(
+    () => createAppleVerifier({ ...baseOpts, bundleId: undefined }),
+    /BUNDLE_ID/,
+  );
 });
 
 test('factory rejects empty productIds', async () => {
-  await assert.rejects(
-    () => createAppleVerifier({ ...baseOpts, productIds: [] }),
-    /PRODUCT_IDS/,
-  );
+  await assert.rejects(() => createAppleVerifier({ ...baseOpts, productIds: [] }), /PRODUCT_IDS/);
 });
 
 test('factory rejects missing rootCertFingerprint', async () => {

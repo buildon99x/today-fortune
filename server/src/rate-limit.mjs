@@ -5,7 +5,11 @@
 
 import { hashIdentifier } from './util/hash-id.mjs';
 
-export function createRateLimiter({ capacity = 30, refillPerSec = 0.2, now = () => Date.now() } = {}) {
+export function createRateLimiter({
+  capacity = 30,
+  refillPerSec = 0.2,
+  now = () => Date.now(),
+} = {}) {
   const buckets = new Map(); // hashed key -> { tokens, last }
 
   function allow(key) {

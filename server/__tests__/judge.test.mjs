@@ -1,11 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  AXES,
-  createJudge,
-  formatForJudge,
-  parseJudgeResponse,
-} from '../src/eval/judge.mjs';
+import { AXES, createJudge, formatForJudge, parseJudgeResponse } from '../src/eval/judge.mjs';
 
 const sampleResult = {
   acknowledgement: '오늘 마음에 작은 결이 비치네요',

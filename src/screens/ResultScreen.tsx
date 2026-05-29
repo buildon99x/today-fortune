@@ -7,16 +7,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, ScrollView, Share } from 'react-native';
 import type { BirthInput } from '../App';
-import { fetchFortune, unlockFortune, type FreeFortune } from '../services/fortuneApi';
+import {
+  fetchFortune,
+  unlockFortune,
+  type FreeFortune,
+  type LuckyItemsData,
+} from '../services/fortuneApi';
 import { showInterstitial, showRewarded } from '../services/ads';
 import { purchase, PRODUCTS } from '../services/iap';
 import { buildShareMessage } from '../share.mjs';
 
-type Premium = { sections: { title: string; body: string }[]; advice: string; luckyItems: any };
+type Premium = {
+  sections: { title: string; body: string }[];
+  advice: string;
+  luckyItems: LuckyItemsData | null;
+};
 type LoadState = { status: 'loading' | 'ready' | 'error'; data?: FreeFortune; error?: string };
 
 const FALLBACK_LOAD_ERROR = '오늘의 흐름이 잠시 흐려졌어요. 조금 뒤에 다시 보여드릴게요.';
 const FALLBACK_UNLOCK_ERROR = '잠깐 흐름이 흐려졌어요. 다시 한 번 시도해 주실래요?';
+
+// catch(e)는 unknown — Error만 메시지 추출, 그 외엔 한국어 폴백.
+function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof Error && e.message ? e.message : fallback;
+}
 
 export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () => void }) {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
@@ -29,8 +43,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
       await showInterstitial();
       const data = await fetchFortune(input);
       setState({ status: 'ready', data });
-    } catch (e: any) {
-      setState({ status: 'error', error: e?.message ?? FALLBACK_LOAD_ERROR });
+    } catch (e) {
+      setState({ status: 'error', error: errorMessage(e, FALLBACK_LOAD_ERROR) });
     }
   }, [input]);
 
@@ -78,8 +92,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
       const { purchased, receipt } = await purchase(PRODUCTS.fullReading);
       if (!purchased || !receipt) return;
       setPremium(await unlockFortune(input, { type: 'iap', receipt }));
-    } catch (e: any) {
-      setUnlockMsg(e?.message ?? FALLBACK_UNLOCK_ERROR);
+    } catch (e) {
+      setUnlockMsg(errorMessage(e, FALLBACK_UNLOCK_ERROR));
     }
   };
   const unlockByAd = async () => {
@@ -88,8 +102,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
       const { rewarded, token } = await showRewarded();
       if (!rewarded || !token) return;
       setPremium(await unlockFortune(input, { type: 'rewarded_ad', token }));
-    } catch (e: any) {
-      setUnlockMsg(e?.message ?? FALLBACK_UNLOCK_ERROR);
+    } catch (e) {
+      setUnlockMsg(errorMessage(e, FALLBACK_UNLOCK_ERROR));
     }
   };
 
@@ -126,7 +140,9 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
           <Text style={{ color: '#4e5968', fontSize: 14, fontStyle: 'italic' }}>
             오늘의 흐름은 관계운과 조언에서 한 번 더 깊어져요.
           </Text>
-          <Text style={{ color: '#6b7684', fontSize: 13 }}>전체 운세를 열어 행운의 색·숫자·방향까지 함께 받아보세요.</Text>
+          <Text style={{ color: '#6b7684', fontSize: 13 }}>
+            전체 운세를 열어 행운의 색·숫자·방향까지 함께 받아보세요.
+          </Text>
           <Pressable onPress={unlockByPurchase} accessibilityRole="button" style={primaryBtn}>
             <Text style={primaryTxt}>전체 운세 해제</Text>
           </Pressable>
@@ -171,7 +187,7 @@ function Section({ title, body }: { title: string; body: string }) {
   );
 }
 
-function LuckyItems({ items }: { items: { color?: string; number?: number; direction?: string } }) {
+function LuckyItems({ items }: { items: LuckyItemsData }) {
   const chips = [
     items.color && { k: '행운의 색', v: items.color },
     items.number != null && { k: '행운의 숫자', v: String(items.number) },
@@ -181,7 +197,10 @@ function LuckyItems({ items }: { items: { color?: string; number?: number; direc
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {chips.map((c) => (
-        <View key={c.k} style={{ backgroundColor: '#f2f4f6', borderRadius: 10, padding: 12, minWidth: 96 }}>
+        <View
+          key={c.k}
+          style={{ backgroundColor: '#f2f4f6', borderRadius: 10, padding: 12, minWidth: 96 }}
+        >
           <Text style={{ fontSize: 12, color: '#8b95a1' }}>{c.k}</Text>
           <Text style={{ fontSize: 16, fontWeight: '700' }}>{c.v}</Text>
         </View>
@@ -191,7 +210,11 @@ function LuckyItems({ items }: { items: { color?: string; number?: number; direc
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>{children}</View>;
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+      {children}
+    </View>
+  );
 }
 
 // LLM 호출 30-60s 동안 정지로 보이지 않게 회전. 첫 메시지는 대기 이유를 짧게 알려 이탈 ↓.
@@ -225,9 +248,38 @@ function formatDate(iso: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.replace(/-/g, '.') : iso;
 }
 
-const primaryBtn = { backgroundColor: '#3182f6', padding: 14, borderRadius: 12, alignItems: 'center' } as const;
+const primaryBtn = {
+  backgroundColor: '#3182f6',
+  padding: 14,
+  borderRadius: 12,
+  alignItems: 'center',
+} as const;
 const primaryTxt = { color: 'white', fontWeight: '700' } as const;
-const ghostBtn = { borderWidth: 1, borderColor: '#dfe3e8', padding: 14, borderRadius: 12, alignItems: 'center' } as const;
-const shareBtn = { borderWidth: 1, borderColor: '#c6dafc', backgroundColor: '#f4f8ff', padding: 12, borderRadius: 12, alignItems: 'center' } as const;
-const lockedCard = { borderWidth: 1, borderColor: '#eaedf1', borderRadius: 16, padding: 16, gap: 10 } as const;
-const ackCard = { backgroundColor: '#f4f8ff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14 } as const;
+const ghostBtn = {
+  borderWidth: 1,
+  borderColor: '#dfe3e8',
+  padding: 14,
+  borderRadius: 12,
+  alignItems: 'center',
+} as const;
+const shareBtn = {
+  borderWidth: 1,
+  borderColor: '#c6dafc',
+  backgroundColor: '#f4f8ff',
+  padding: 12,
+  borderRadius: 12,
+  alignItems: 'center',
+} as const;
+const lockedCard = {
+  borderWidth: 1,
+  borderColor: '#eaedf1',
+  borderRadius: 16,
+  padding: 16,
+  gap: 10,
+} as const;
+const ackCard = {
+  backgroundColor: '#f4f8ff',
+  borderRadius: 12,
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+} as const;

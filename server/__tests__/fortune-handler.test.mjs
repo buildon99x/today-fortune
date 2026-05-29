@@ -19,10 +19,12 @@ const goodProfile = { year: 1990, month: 5, day: 20, gender: 'female' };
 
 function makeHandler(overrides = {}) {
   const calls = { llm: 0 };
-  const llm = overrides.llm ?? (async () => {
-    calls.llm += 1;
-    return FORTUNE_JSON;
-  });
+  const llm =
+    overrides.llm ??
+    (async () => {
+      calls.llm += 1;
+      return FORTUNE_JSON;
+    });
   const handler = createFortuneHandler({
     llm,
     cache: overrides.cache,
@@ -48,7 +50,9 @@ test('400 with Korean message for an invalid birthdate', async () => {
 
 test('200 returns free portion only — premium is not leaked', async () => {
   const { handler } = makeHandler();
-  const r = await handler.getFortune({ body: { profile: goodProfile, options: { type: 'daily' } } });
+  const r = await handler.getFortune({
+    body: { profile: goodProfile, options: { type: 'daily' } },
+  });
   assert.equal(r.status, 200);
   assert.equal(r.body.acknowledgement, '오늘 마음에 잔잔한 결이 비치네요');
   assert.equal(r.body.headline, '오늘은 기회의 날');
@@ -76,14 +80,20 @@ test('429 when rate limiter denies', async () => {
 });
 
 test('502 when the llm fails', async () => {
-  const { handler } = makeHandler({ llm: async () => { throw new Error('upstream down'); } });
+  const { handler } = makeHandler({
+    llm: async () => {
+      throw new Error('upstream down');
+    },
+  });
   const r = await handler.getFortune({ body: { profile: goodProfile } });
   assert.equal(r.status, 502);
 });
 
 test('unlock returns 501 when no proof verifier is wired', async () => {
   const { handler } = makeHandler();
-  const r = await handler.unlock({ body: { profile: goodProfile, proof: { type: 'iap', receipt: 'x' } } });
+  const r = await handler.unlock({
+    body: { profile: goodProfile, proof: { type: 'iap', receipt: 'x' } },
+  });
   assert.equal(r.status, 501);
 });
 
@@ -137,9 +147,14 @@ test('makeCacheKey returns hashed hex (no plaintext PII)', () => {
 test('cache invalidates across promptVersion change', async () => {
   const cache = createCache();
   const { handler: h1, calls } = makeHandler({ cache, promptVersion: 'v-old' });
-  const { handler: h2 } = makeHandler({ cache, promptVersion: 'v-new', llm: async () => {
-    calls.llm += 1; return FORTUNE_JSON;
-  } });
+  const { handler: h2 } = makeHandler({
+    cache,
+    promptVersion: 'v-new',
+    llm: async () => {
+      calls.llm += 1;
+      return FORTUNE_JSON;
+    },
+  });
   await h1.getFortune({ body: { profile: goodProfile } });
   await h2.getFortune({ body: { profile: goodProfile } });
   // Different versions → both call the llm (no cache reuse)

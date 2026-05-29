@@ -33,10 +33,7 @@ export function createRewardedAdVerifier({
       return { valid: false, reason: '만료되었거나 미래 timestamp' };
     }
 
-    const expected = crypto
-      .createHmac('sha256', secret)
-      .update(`${ts}.${payload}`)
-      .digest();
+    const expected = crypto.createHmac('sha256', secret).update(`${ts}.${payload}`).digest();
 
     let provided;
     try {

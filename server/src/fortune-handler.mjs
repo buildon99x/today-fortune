@@ -66,7 +66,10 @@ export function createFortuneHandler({
         const full = await generate(profile, type);
         return { status: 200, body: { ...full.free, meta: full.meta } };
       } catch {
-        return { status: 502, body: { error: '운세를 생성하지 못했어요. 잠시 후 다시 시도해 주세요.' } };
+        return {
+          status: 502,
+          body: { error: '운세를 생성하지 못했어요. 잠시 후 다시 시도해 주세요.' },
+        };
       }
     },
 
@@ -96,7 +99,10 @@ export function createFortuneHandler({
         const full = await generate(profile, type);
         return { status: 200, body: full.premium };
       } catch {
-        return { status: 502, body: { error: '운세를 생성하지 못했어요. 잠시 후 다시 시도해 주세요.' } };
+        return {
+          status: 502,
+          body: { error: '운세를 생성하지 못했어요. 잠시 후 다시 시도해 주세요.' },
+        };
       }
     },
   };

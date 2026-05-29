@@ -37,10 +37,10 @@ test('rejects missing purchaseToken / productId', async () => {
     signJwt: () => 'jwt',
   });
   assert.deepEqual(await verify({}), { valid: false, reason: 'purchaseToken 누락' });
-  assert.deepEqual(
-    await verify({ purchaseToken: 't' }),
-    { valid: false, reason: 'productId 누락' },
-  );
+  assert.deepEqual(await verify({ purchaseToken: 't' }), {
+    valid: false,
+    reason: 'productId 누락',
+  });
 });
 
 test('rejects productId not in allow-list', async () => {

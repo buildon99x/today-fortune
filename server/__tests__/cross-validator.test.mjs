@@ -11,9 +11,27 @@ function fakeJudge(scores, notes = '') {
   };
 }
 
-const HIGH = { felt_comfort: 5, internal_locus: 5, barnum_balance: 5, hypothetical_tone: 5, permission_voice: 5 };
-const MID = { felt_comfort: 4, internal_locus: 4, barnum_balance: 4, hypothetical_tone: 4, permission_voice: 4 };
-const LOW = { felt_comfort: 2, internal_locus: 2, barnum_balance: 2, hypothetical_tone: 2, permission_voice: 2 };
+const HIGH = {
+  felt_comfort: 5,
+  internal_locus: 5,
+  barnum_balance: 5,
+  hypothetical_tone: 5,
+  permission_voice: 5,
+};
+const MID = {
+  felt_comfort: 4,
+  internal_locus: 4,
+  barnum_balance: 4,
+  hypothetical_tone: 4,
+  permission_voice: 4,
+};
+const LOW = {
+  felt_comfort: 2,
+  internal_locus: 2,
+  barnum_balance: 2,
+  hypothetical_tone: 2,
+  permission_voice: 2,
+};
 
 test('factory rejects missing primary or secondary', () => {
   assert.throws(() => createCrossValidator({}), /primary/);
@@ -21,7 +39,10 @@ test('factory rejects missing primary or secondary', () => {
 });
 
 test('evaluate runs both judges and returns both results', async () => {
-  const cv = createCrossValidator({ primary: fakeJudge(HIGH, 'p'), secondary: fakeJudge(MID, 's') });
+  const cv = createCrossValidator({
+    primary: fakeJudge(HIGH, 'p'),
+    secondary: fakeJudge(MID, 's'),
+  });
   const r = await cv.evaluate({ headline: 'x', sections: [] });
   assert.equal(r.primary.notes, 'p');
   assert.equal(r.secondary.notes, 's');
@@ -50,14 +71,22 @@ test('divergence — diff per axis computed correctly', async () => {
 });
 
 test('divergence — exceeds threshold → agree=false', async () => {
-  const cv = createCrossValidator({ primary: fakeJudge(HIGH), secondary: fakeJudge(LOW), threshold: 1 });
+  const cv = createCrossValidator({
+    primary: fakeJudge(HIGH),
+    secondary: fakeJudge(LOW),
+    threshold: 1,
+  });
   const r = await cv.evaluate({});
   assert.equal(r.divergence.maxAxisDiff, 3); // 5-2=3
   assert.equal(r.divergence.agree, false);
 });
 
 test('custom threshold widens tolerance', async () => {
-  const cv = createCrossValidator({ primary: fakeJudge(HIGH), secondary: fakeJudge(LOW), threshold: 3 });
+  const cv = createCrossValidator({
+    primary: fakeJudge(HIGH),
+    secondary: fakeJudge(LOW),
+    threshold: 3,
+  });
   const r = await cv.evaluate({});
   assert.equal(r.divergence.agree, true); // 3 <= threshold=3
 });

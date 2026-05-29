@@ -32,7 +32,13 @@ async function runOnce(i) {
   const fortuneText = await fortuneLlm({ system: prompt.system, user: prompt.user });
   const fortune = parseFortuneResponse(fortuneText);
   const scored = await judge.evaluate(fortune);
-  return { i, ms: Date.now() - t0, headline: fortune.headline, scores: scored.scores, total: scored.total };
+  return {
+    i,
+    ms: Date.now() - t0,
+    headline: fortune.headline,
+    scores: scored.scores,
+    total: scored.total,
+  };
 }
 
 function stats(xs) {
@@ -67,9 +73,13 @@ if (CSV) {
   console.log('축별 분포 (mean / min / max / stdev)');
   for (const a of AXES) {
     const s = stats(results.map((r) => r.scores[a]));
-    console.log(`  ${a.padEnd(22)} ${s.mean.toFixed(2)}  ${s.min}  ${s.max}  ±${s.stdev.toFixed(2)}`);
+    console.log(
+      `  ${a.padEnd(22)} ${s.mean.toFixed(2)}  ${s.min}  ${s.max}  ±${s.stdev.toFixed(2)}`,
+    );
   }
   const totals = results.map((r) => r.total);
   const s = stats(totals);
-  console.log(`  ${'TOTAL'.padEnd(22)} ${s.mean.toFixed(2)}  ${s.min}  ${s.max}  ±${s.stdev.toFixed(2)}`);
+  console.log(
+    `  ${'TOTAL'.padEnd(22)} ${s.mean.toFixed(2)}  ${s.min}  ${s.max}  ±${s.stdev.toFixed(2)}`,
+  );
 }

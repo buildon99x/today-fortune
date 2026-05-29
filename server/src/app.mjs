@@ -55,7 +55,10 @@ async function buildStorage() {
         rateLimiter: createRedisRateLimiter({ client, capacity: 30, windowSec: 60 }),
       };
     } catch (e) {
-      console.warn('[storage] Upstash env 있으나 @upstash/redis 미설치 — 인메모리로 폴백:', e.message);
+      console.warn(
+        '[storage] Upstash env 있으나 @upstash/redis 미설치 — 인메모리로 폴백:',
+        e.message,
+      );
     }
   }
   return {
@@ -81,7 +84,10 @@ async function buildVerifier({ redisClient }) {
       const { createAppleVerifier } = await import('./verifiers/apple.mjs');
       verifiers.iap_apple = await createAppleVerifier({
         bundleId: process.env.APPLE_BUNDLE_ID,
-        productIds: (process.env.APPLE_PRODUCT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+        productIds: (process.env.APPLE_PRODUCT_IDS ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         rootCertFingerprint: fp,
       });
       enabled.push('iap_apple');
@@ -95,7 +101,10 @@ async function buildVerifier({ redisClient }) {
       verifiers.iap_google = createGoogleVerifier({
         serviceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
         packageName: process.env.GOOGLE_PACKAGE_NAME,
-        productIds: (process.env.GOOGLE_PRODUCT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+        productIds: (process.env.GOOGLE_PRODUCT_IDS ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
       });
       enabled.push('iap_google');
     } catch (e) {
@@ -122,13 +131,19 @@ async function buildVerifier({ redisClient }) {
 }
 
 const storage = await buildStorage();
-const { verifyProof, enabled: enabledVerifiers } = await buildVerifier({ redisClient: storage.client });
+const { verifyProof, enabled: enabledVerifiers } = await buildVerifier({
+  redisClient: storage.client,
+});
 const llmInfo = describeProvider();
 const HMAC_CONFIGURED = !!process.env.PRIVACY_HMAC_SECRET;
-console.log(`[storage] mode=${storage.mode}  cache=${CACHE_ENABLED ? `${CACHE_TTL_SEC}s` : 'disabled'}`);
+console.log(
+  `[storage] mode=${storage.mode}  cache=${CACHE_ENABLED ? `${CACHE_TTL_SEC}s` : 'disabled'}`,
+);
 console.log(`[verify] enabled=${enabledVerifiers.join(',') || '(none — /unlock 501)'}`);
 console.log(`[llm] provider=${llmInfo.provider} nodeEnv=${llmInfo.nodeEnv} — ${llmInfo.note}`);
-console.log(`[privacy] hmac=${HMAC_CONFIGURED ? 'configured' : 'FALLBACK(SHA-256)'}  cacheTtl=${CACHE_TTL_SEC}s`);
+console.log(
+  `[privacy] hmac=${HMAC_CONFIGURED ? 'configured' : 'FALLBACK(SHA-256)'}  cacheTtl=${CACHE_TTL_SEC}s`,
+);
 
 const handler = createFortuneHandler({
   llm: await pickFortuneLlm(),

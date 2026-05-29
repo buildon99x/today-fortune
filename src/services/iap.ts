@@ -14,13 +14,15 @@ export type ProductId = (typeof PRODUCTS)[keyof typeof PRODUCTS];
  * 구매 플로우 실행. 성공 시 서버 검증용 receipt를 반환한다.
  * receipt는 백엔드 /api/fortune/unlock 으로 보내 서버에서 검증해야 한다(클라 신뢰 금지).
  */
-export async function purchase(productId: ProductId): Promise<{ purchased: boolean; receipt?: string }> {
-  // TODO: framework 결제 API 호출 후 영수증 획득
+export async function purchase(
+  _productId: ProductId,
+): Promise<{ purchased: boolean; receipt?: string }> {
+  // TODO: framework 결제 API 호출 후 영수증 획득 (_productId로 상품 지정)
   return { purchased: false };
 }
 
 /** 이미 해제/구독 중인지 확인(앱 재진입 시 복원). */
-export async function isUnlocked(productId: ProductId): Promise<boolean> {
+export async function isUnlocked(_productId: ProductId): Promise<boolean> {
   // TODO: framework 구매 복원 API
   return false;
 }

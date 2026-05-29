@@ -47,10 +47,7 @@ test('NODE_ENV=production + LLM_PROVIDER=cli — 부팅 거부', async () => {
       () => pickFortuneLlm(),
       /운영\(NODE_ENV=production\)에서 허용되지 않습니다/,
     );
-    await assert.rejects(
-      () => pickJudgeLlm(),
-      /운영\(NODE_ENV=production\)에서 허용되지 않습니다/,
-    );
+    await assert.rejects(() => pickJudgeLlm(), /운영\(NODE_ENV=production\)에서 허용되지 않습니다/);
   });
 });
 

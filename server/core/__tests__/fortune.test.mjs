@@ -3,11 +3,7 @@ import assert from 'node:assert/strict';
 
 import { validateBirthInput, isLeapYear, daysInMonth, firstBirthInputError } from '../validate.mjs';
 import { buildFortunePrompt, TYPE_LABELS } from '../prompt.mjs';
-import {
-  createFortuneEngine,
-  parseFortuneResponse,
-  splitFreePremium,
-} from '../fortune.mjs';
+import { createFortuneEngine, parseFortuneResponse, splitFreePremium } from '../fortune.mjs';
 
 test('isLeapYear handles century rules', () => {
   assert.equal(isLeapYear(2000), true);

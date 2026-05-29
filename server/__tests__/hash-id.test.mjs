@@ -1,10 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  hashIdentifier,
-  assertPrivacyReady,
-  _resetPrivacyWarnings,
-} from '../src/util/hash-id.mjs';
+import { hashIdentifier, assertPrivacyReady, _resetPrivacyWarnings } from '../src/util/hash-id.mjs';
 
 // env 격리 — 다른 테스트에 영향 없도록 매번 복원.
 async function withEnv(overrides, fn) {
@@ -47,10 +43,7 @@ test('다른 입력 → 다른 해시', async () => {
 
 test('namespace 다르면 같은 값이라도 다른 해시', async () => {
   await withEnv({ PRIVACY_HMAC_SECRET: undefined }, () => {
-    assert.notEqual(
-      hashIdentifier('1.2.3.4', 'rate-limit'),
-      hashIdentifier('1.2.3.4', 'replay'),
-    );
+    assert.notEqual(hashIdentifier('1.2.3.4', 'rate-limit'), hashIdentifier('1.2.3.4', 'replay'));
   });
 });
 
@@ -76,8 +69,12 @@ test('PRIVACY_HMAC_SECRET 같으면 결정적', async () => {
 
 test('PRIVACY_HMAC_SECRET 다르면 다른 해시', async () => {
   let h1, h2;
-  await withEnv({ PRIVACY_HMAC_SECRET: 'secret-1' }, () => { h1 = hashIdentifier('same'); });
-  await withEnv({ PRIVACY_HMAC_SECRET: 'secret-2' }, () => { h2 = hashIdentifier('same'); });
+  await withEnv({ PRIVACY_HMAC_SECRET: 'secret-1' }, () => {
+    h1 = hashIdentifier('same');
+  });
+  await withEnv({ PRIVACY_HMAC_SECRET: 'secret-2' }, () => {
+    h2 = hashIdentifier('same');
+  });
   assert.notEqual(h1, h2);
 });
 
@@ -121,7 +118,11 @@ test('assertPrivacyReady: 짧은 시크릿(<32자)이면 경고', async () => {
     const orig = console.warn;
     const calls = [];
     console.warn = (...a) => calls.push(a);
-    try { assertPrivacyReady(); } finally { console.warn = orig; }
+    try {
+      assertPrivacyReady();
+    } finally {
+      console.warn = orig;
+    }
     assert.equal(calls.length, 1);
     assert.match(calls[0][0], /32자 이상 권장/);
   });
