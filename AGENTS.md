@@ -139,7 +139,75 @@ PR 머지 전 자가 점검:
 
 ---
 
-## 7. 빠른 참조
+## 7. 코드 스타일 · 복잡도
+
+도구(ESLint·타입체크·테스트)가 강제하지 못하는 **작성 컨벤션**. 새 코드는 근처의 기존 패턴을 그대로 복제하는 것을 우선한다.
+
+### 7.A 팩토리 + 의존성 주입
+
+새 모듈도 `create*({ deps })` 형태로 의존성을 주입받는다. 전역 import·신규 싱글톤을 만들지 말 것.
+
+```js
+// 주입 구조라 테스트(mock)가 자동으로 결정된다.
+export function createThing({ llm, cache, now = Date.now }) { ... }
+```
+
+근거 패턴: `createFortuneHandler` / `createCache` / `createRateLimiter` / `createJudge`.
+
+### 7.B ESM `.mjs` + 명시 확장자 + named export
+
+- `import { x } from './foo.mjs'` — **확장자 항상 명시**(Node ESM 필수).
+- `default export`는 "앱 1개"(`app.mjs`) 같은 경우만. 그 외 named export.
+- 순수 로직은 `.tsx`에 인라인하지 말고 `.mjs`로 분리 → Metro 번들 + `node:test` 공유(`validation.mjs` / `share.mjs`).
+
+### 7.C 주석은 "왜"를 한국어로
+
+무엇(what)이 아니라 **왜(why)** 를 적는다. 값을 바꿔도 되는지 판단 근거를 코드 옆에 남긴다(예: `app.mjs`의 `CACHE_TTL_SEC` 기본 0 사유, `clientIp` 헤더 우선순위 사유).
+
+### 7.D `any` 금지 → `unknown` + 내로잉 / 구조적 타입
+
+`catch (e: unknown)` + 내로잉 헬퍼(`errorMessage`), API 계약은 명시 타입(`LuckyItemsData`). `any`는 ESLint가 차단한다.
+
+### 7.E 환경설정 — 단일 읽기 지점 + 안전한 기본값
+
+`process.env.X`는 모듈 상단에서 한 번 읽고 정규화(예: `CACHE_TTL_SEC` IIFE). 곳곳에 흩뿌리지 않는다. 기본값은 가장 안전한 쪽(휘발=0, 검증기 미설정=`/unlock` 501).
+
+### 7.F 버전 상수 규율
+
+프롬프트/스키마 변경 → 같은 변경에서 `PROMPT_VERSION`(채점은 `JUDGE_VERSION`) bump. (§2.2·§2.3과 동일)
+
+### 7.G 사용자향 한국어 톤
+
+부드럽고 안심시키는 문구. 폴백 메시지는 상수로 분리(`FALLBACK_LOAD_ERROR` 등). 기존 메시지 톤을 기준점으로 일관 유지.
+
+### 7.H 테스트
+
+`node:test` 사용, 콜로케이션 `__tests__/*.test.mjs`. 구현이 아닌 **속성**을 검증(예: "평문이 키에 없음"). 새 식별자 추가 시 같은 패턴의 테스트 의무(§1.2).
+
+### 7.I 코드 복잡도
+
+가드 절(early return)로 중첩을 평탄화한다 — 깊은 if-else 금지(지배 패턴: `fortune-handler.getFortune`). `switch`/긴 if-else 체인 대신 가드 절 또는 작은 룩업 객체(예: `labelForType`).
+
+임계치는 ESLint `warn`으로 둔다 — **빌드/커밋을 막지 않는 리팩터링 신호**:
+
+| 룰 | 임계치 | 비고 |
+|---|---|---|
+| `complexity` | ≤ 20 | `&&`·`\|\|`·`?.`·삼항도 카운트됨. 초과 시 가드 절·헬퍼 추출로 분리 |
+| `max-depth` | ≤ 4 | 현 최대 ~3 |
+| `max-lines-per-function` | ≤ 150 (공백·주석 제외) | JSX 화면 컴포넌트 고려 |
+| `max-params` | ≤ 4 (positional) | 인자 3개+ 는 옵션 객체로 |
+
+### 7.J 단일 책임 함수
+
+**한 함수 = 한 역할.** "데이터 가공 + 부수효과(로그/IO)"가 섞이면 분리한다.
+
+- 팩토리는 의존성 조립만, 핸들러 메서드는 흐름 제어만(`fortune-handler`의 `generate` / `getFortune` / `unlock` 분리).
+- JSX: 반복·독립 UI는 서브컴포넌트로 추출(`Section` / `LuckyItems` / `Centered`, `Chip`). 순수 계산은 `.mjs`로, 컴포넌트는 표현만.
+- 이름에 "AndX" 또는 모호한 `handle`/`process`가 들어가면 책임이 둘이라는 신호 — 쪼갠다.
+
+---
+
+## 8. 빠른 참조
 
 | 파일 | 책임 |
 |---|---|

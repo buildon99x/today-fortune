@@ -36,6 +36,18 @@ export default tseslint.config(
     },
   },
 
+  // 복잡도 가드 — AGENTS.md §7.I. 경고만(빌드/커밋 막지 않음), 현 코드는 전부 통과.
+  // 단일 책임(§7.J)을 거스르는 비대·다분기 함수를 리팩터링 신호로 표면화한다.
+  {
+    files: ['**/*.{mjs,js,ts,tsx}'],
+    rules: {
+      complexity: ['warn', 20],
+      'max-depth': ['warn', 4],
+      'max-lines-per-function': ['warn', { max: 150, skipBlankLines: true, skipComments: true }],
+      'max-params': ['warn', 4],
+    },
+  },
+
   // 프라이버시/아키텍처 게이트 — AGENTS.md §2.1:
   // handler/app/core 에서 LLM 클라이언트를 직접 import 금지. 반드시 llm-router 경유.
   {
