@@ -1,11 +1,11 @@
 // 입력 화면: 생년월일 + 성별 + 운세 유형.
 // UX: 입력 중 인라인 검증(코어 firstBirthInputError 재사용), 유효할 때만 CTA 활성화.
-// TODO(검수): RN primitives → TDS 컴포넌트(TextField/SegmentedControl/Button)로 교체.
 
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
 import type { BirthInput } from '../App';
 import { firstBirthInputError } from '../validation.mjs';
+import { Button, Chip, TextField } from '../components/tds';
 
 const TYPES: { id: BirthInput['type']; label: string; hint: string }[] = [
   { id: 'daily', label: '오늘의 운세', hint: '오늘 하루의 흐름과 마음의 결을 짚어드려요.' },
@@ -61,33 +61,28 @@ export function HomeScreen({
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={label}>생년월일</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#4e5968' }}>생년월일</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TextInput
+          <TextField
             placeholder="1995"
-            keyboardType="number-pad"
             maxLength={4}
             value={year}
             onChangeText={setYear}
-            style={[input, { flex: 1.4 }]}
+            flex={1.4}
             accessibilityLabel="태어난 연도"
           />
-          <TextInput
+          <TextField
             placeholder="07"
-            keyboardType="number-pad"
             maxLength={2}
             value={month}
             onChangeText={setMonth}
-            style={input}
             accessibilityLabel="태어난 월"
           />
-          <TextInput
+          <TextField
             placeholder="15"
-            keyboardType="number-pad"
             maxLength={2}
             value={day}
             onChangeText={setDay}
-            style={input}
             accessibilityLabel="태어난 일"
           />
         </View>
@@ -103,7 +98,7 @@ export function HomeScreen({
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={label}>성별</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#4e5968' }}>성별</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {GENDERS.map((g) => (
             <Chip
@@ -117,7 +112,7 @@ export function HomeScreen({
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text style={label}>운세 유형</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#4e5968' }}>운세 유형</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {TYPES.map((t) => (
             <Chip key={t.id} active={type === t.id} label={t.label} onPress={() => setType(t.id)} />
@@ -129,20 +124,7 @@ export function HomeScreen({
       </View>
 
       <View style={{ gap: 6 }}>
-        <Pressable
-          onPress={submit}
-          disabled={!canSubmit}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit }}
-          style={{
-            backgroundColor: canSubmit ? '#3182f6' : '#c6d3e3',
-            padding: 16,
-            borderRadius: 12,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>운세 보기</Text>
-        </Pressable>
+        <Button label="운세 보기" onPress={submit} variant="primary" disabled={!canSubmit} />
         {!canSubmit && !error ? (
           <Text style={{ color: '#8b95a1', fontSize: 12, textAlign: 'center' }}>
             생년월일을 모두 입력해 주세요.
@@ -152,34 +134,3 @@ export function HomeScreen({
     </View>
   );
 }
-
-function Chip({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      style={{
-        borderWidth: 1,
-        borderColor: active ? '#3182f6' : '#dfe3e8',
-        backgroundColor: active ? '#eaf2ff' : 'white',
-        paddingVertical: 9,
-        paddingHorizontal: 14,
-        borderRadius: 999,
-      }}
-    >
-      <Text style={{ color: active ? '#1b64da' : '#4e5968' }}>{label}</Text>
-    </Pressable>
-  );
-}
-
-const label = { fontSize: 14, fontWeight: '600', color: '#4e5968' } as const;
-const input = {
-  borderWidth: 1,
-  borderColor: '#dfe3e8',
-  borderRadius: 10,
-  paddingVertical: 12,
-  paddingHorizontal: 14,
-  flex: 1,
-  fontSize: 16,
-} as const;
