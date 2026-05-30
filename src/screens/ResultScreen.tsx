@@ -67,7 +67,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
 
   if (state.status === 'loading') {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xxl, padding: spacing.xxl }}>
+      {/* 상단 정렬 — 결과(ScrollView, 상단 정렬)와 같은 위치에서 스켈레톤이 채워져 로딩→완료 점프 제거. */}
+      <View style={{ flex: 1, alignItems: 'center', gap: spacing.xxl, padding: spacing.xxl }}>
         <FortuneSkeleton />
         <RotatingLoadMessage color={palette.textTertiary} />
         {/* 30~60초+ 대기에서 마음이 바뀌면 빠져나올 수 있게 — 낮은 강조 ghost 한 개. */}
@@ -224,10 +225,11 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
             loading={unlock.status === UNLOCK_STATES.ADVERTISING}
             disabled={unlockBusy}
           />
+          {/* 복구 동작이라 1차 CTA(해제/광고)와 시선 무게를 분리 — 저강조 텍스트 링크. */}
           <Button
             label={t('result.locked.restore')}
             onPress={restore}
-            variant="ghost"
+            variant="link"
             loading={unlock.status === UNLOCK_STATES.RESTORING}
             disabled={unlockBusy}
           />

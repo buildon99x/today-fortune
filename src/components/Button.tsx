@@ -5,7 +5,8 @@ import { Pressable, Text, Animated, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 
-export type ButtonVariant = 'primary' | 'ghost' | 'share';
+// link: 외곽선 없는 저강조 텍스트 링크(복구/보조 동작용) — 1차 동작과 시선 무게를 분리.
+export type ButtonVariant = 'primary' | 'ghost' | 'share' | 'link';
 
 export function Button({
   label,
@@ -36,12 +37,15 @@ export function Button({
         : 'transparent';
   const borderColor =
     variant === 'ghost' ? palette.border : variant === 'share' ? palette.accentBorder : 'transparent';
+  const isLink = variant === 'link';
   const textColor =
     variant === 'primary'
       ? palette.onBrand
       : variant === 'share'
         ? palette.brandText
-        : palette.textSecondary;
+        : isLink
+          ? palette.textTertiary
+          : palette.textSecondary;
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -55,9 +59,9 @@ export function Button({
         accessibilityHint={accessibilityHint}
         style={{
           backgroundColor: bg,
-          borderWidth: variant === 'primary' ? 0 : 1,
+          borderWidth: variant === 'primary' || isLink ? 0 : 1,
           borderColor,
-          paddingVertical: variant === 'share' ? spacing.lg : spacing.xl,
+          paddingVertical: variant === 'share' ? spacing.lg : isLink ? spacing.sm : spacing.xl,
           paddingHorizontal: spacing.xl,
           borderRadius: radius.md,
           minHeight: 44, // 터치 타깃 최소 44px 보장 — share 변형(패딩 작음)도 미달하지 않게.
@@ -68,7 +72,13 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={textColor} />
         ) : (
-          <Text style={{ color: textColor, fontWeight: font.weight.bold, fontSize: font.size.body }}>
+          <Text
+            style={{
+              color: textColor,
+              fontWeight: isLink ? font.weight.medium : font.weight.bold,
+              fontSize: isLink ? font.size.sm : font.size.body,
+            }}
+          >
             {label}
           </Text>
         )}
