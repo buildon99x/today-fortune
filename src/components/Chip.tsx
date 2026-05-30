@@ -30,6 +30,9 @@ export function Chip({
           paddingVertical: spacing.sm + 3,
           paddingHorizontal: spacing.lg,
           borderRadius: radius.pill,
+          minHeight: 44, // 터치 타깃 최소 44px(iOS/WCAG) 보장 — 패딩만으론 ~36px라 미달.
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <Text style={{ color: active ? palette.brandText : palette.textSecondary }}>{label}</Text>

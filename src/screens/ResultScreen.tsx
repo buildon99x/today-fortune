@@ -67,9 +67,11 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
 
   if (state.status === 'loading') {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xxl }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xxl, padding: spacing.xxl }}>
         <FortuneSkeleton />
         <RotatingLoadMessage color={palette.textTertiary} />
+        {/* 30~60초+ 대기에서 마음이 바뀌면 빠져나올 수 있게 — 낮은 강조 ghost 한 개. */}
+        <Button label={t('common.backToInput')} onPress={onBack} variant="ghost" />
       </View>
     );
   }
@@ -306,12 +308,13 @@ function RotatingLoadMessage({ color }: { color: string }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     // 5초 간격 — 너무 빠르면 산만, 너무 느리면 정지로 보임.
-    const id = setInterval(() => setIdx((i) => (i + 1) % LOAD_MESSAGES.length), 5000);
+    // 빈 테이블이어도 % 0(NaN) 방지 — i18n에 result.loadMessages가 없어도 안전.
+    const id = setInterval(() => setIdx((i) => (i + 1) % (LOAD_MESSAGES.length || 1)), 5000);
     return () => clearInterval(id);
   }, []);
   return (
     <Text accessibilityLiveRegion="polite" style={{ color, textAlign: 'center' }}>
-      {LOAD_MESSAGES[idx]}
+      {LOAD_MESSAGES[idx] ?? ''}
     </Text>
   );
 }

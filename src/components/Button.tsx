@@ -60,6 +60,7 @@ export function Button({
           paddingVertical: variant === 'share' ? spacing.lg : spacing.xl,
           paddingHorizontal: spacing.xl,
           borderRadius: radius.md,
+          minHeight: 44, // 터치 타깃 최소 44px 보장 — share 변형(패딩 작음)도 미달하지 않게.
           alignItems: 'center',
           justifyContent: 'center',
         }}
