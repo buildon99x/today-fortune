@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 **/node_modules/
+# Lockfiles are intentionally untracked: react/react-native/@apps-in-toss
+# versions are pinned by `ait init`, not by a committed lockfile.
+package-lock.json
+**/package-lock.json
 
 # Build artifacts
 dist/
