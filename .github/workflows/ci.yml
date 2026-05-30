@@ -1,0 +1,41 @@
+# 클라이언트 + 서버 CI.
+#
+# unit-pure 잡은 의존성 설치 없이 node --test로 순수 로직을 검증한다(로컬 게이트와 동일).
+# 이 저장소는 react-native:"*" / @apps-in-toss/framework:"latest" 처럼 떠 있는 버전을
+# ait 툴체인이 ait init 시점에 고정한다 — CI의 일반 npm install로는 안정적으로 안 풀릴 수
+# 있어, lint/typecheck 잡은 best-effort(continue-on-error)로 두고 unit-pure만 필수 체크로 삼는다.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-pure:
+    name: unit tests (no deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: client pure-logic tests
+        run: node --test 'src/__tests__/*.test.mjs'
+      - name: server tests
+        run: cd server && node --test
+
+  lint-typecheck:
+    name: lint + typecheck (best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: install (floating RN/framework versions may not resolve here)
+        run: npm install || echo "skip: floating deps unresolved in CI"
+      - run: npm run lint || true
+      - run: npm run typecheck || true
+      - run: npm run format:check || true

@@ -3,6 +3,8 @@
 //   https://developers-apps-in-toss.toss.im/ads/intro.html
 // 광고 매출은 토스가 채워주고 파트너에게 정산(현재 별도 수수료 0, 향후 정책 예정).
 //
+// 이 스텁은 광고 통합의 단일 seam이다. 소비처: src/screens/ResultScreen.tsx(보상형 → unlockFortune).
+// 실 SDK 연동 시 아래 본문만 교체하면 해제 UX(로딩/취소/에러)는 그대로 동작한다.
 // TODO(검증): @apps-in-toss/framework 의 실제 광고 API로 아래 본문을 교체.
 
 /** 운세 결과를 보여주기 직전 1회 노출. 가장 빠른 수익화 지점. */

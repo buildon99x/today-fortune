@@ -2,10 +2,11 @@
 //   1) 진입 직전 전면광고 1회 (showInterstitial)
 //   2) 무료: 백엔드가 내려준 headline + 첫 섹션
 //   3) 잠긴 영역: IAP 영수증 / 보상형 광고 토큰을 서버에 보내 프리미엄 해제
-// TODO(검수): RN primitives → TDS 컴포넌트로 교체.
+// 해제 라이프사이클은 순수 리듀서(unlockMachine)가 관리 — 로딩/취소/pending/에러/재시도 표면.
+// 스타일/문구는 토큰(useTheme) + i18n. 컴포넌트 래퍼가 추후 TDS 교체 지점.
 
-import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, Share } from 'react-native';
+import { useCallback, useEffect, useReducer, useState } from 'react';
+import { View, Text, ScrollView, Share } from 'react-native';
 import type { BirthInput } from '../App';
 import {
   fetchFortune,
@@ -14,18 +15,28 @@ import {
   type LuckyItemsData,
 } from '../services/fortuneApi';
 import { showInterstitial, showRewarded } from '../services/ads';
-import { purchase, PRODUCTS } from '../services/iap';
+import { purchase, restorePurchase, PRODUCTS } from '../services/iap';
 import { buildShareMessage } from '../share.mjs';
+import { formatDate, labelForType } from '../format.mjs';
+import { FALLBACK_LOAD_ERROR, FALLBACK_UNLOCK_ERROR } from '../services/errorCatalog.mjs';
+import { createTranslator, createLookup } from '../i18n/index.mjs';
+import {
+  unlockReducer,
+  initialUnlockState,
+  UNLOCK_STATES,
+  canRetry,
+} from '../monetization/unlockMachine.mjs';
+import { useTheme } from '../hooks/useTheme';
+import { useHaptics } from '../hooks/useHaptics';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { FortuneSkeleton } from '../components/Skeleton';
 
-type Premium = {
-  sections: { title: string; body: string }[];
-  advice: string;
-  luckyItems: LuckyItemsData | null;
-};
+const t = createTranslator();
+const lookup = createLookup();
+const UNLOCK_NOT_READY = t('errors.unlockNotReady');
+
 type LoadState = { status: 'loading' | 'ready' | 'error'; data?: FreeFortune; error?: string };
-
-const FALLBACK_LOAD_ERROR = '오늘의 흐름이 잠시 흐려졌어요. 조금 뒤에 다시 보여드릴게요.';
-const FALLBACK_UNLOCK_ERROR = '잠깐 흐름이 흐려졌어요. 다시 한 번 시도해 주실래요?';
 
 // catch(e)는 unknown — Error만 메시지 추출, 그 외엔 한국어 폴백.
 function errorMessage(e: unknown, fallback: string): string {
@@ -33,9 +44,10 @@ function errorMessage(e: unknown, fallback: string): string {
 }
 
 export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () => void }) {
+  const { palette, spacing, font, lineHeight } = useTheme();
+  const haptics = useHaptics();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const [premium, setPremium] = useState<Premium | null>(null);
-  const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+  const [unlock, dispatch] = useReducer(unlockReducer, initialUnlockState);
 
   const load = useCallback(async () => {
     setState({ status: 'loading' });
@@ -44,6 +56,7 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
       const data = await fetchFortune(input);
       setState({ status: 'ready', data });
     } catch (e) {
+      haptics.fire('fetch-error');
       setState({ status: 'error', error: errorMessage(e, FALLBACK_LOAD_ERROR) });
     }
   }, [input]);
@@ -54,111 +67,168 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
 
   if (state.status === 'loading') {
     return (
-      <Centered>
-        <ActivityIndicator color="#3182f6" />
-        <RotatingLoadMessage />
-      </Centered>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xxl }}>
+        <FortuneSkeleton />
+        <RotatingLoadMessage color={palette.textTertiary} />
+      </View>
     );
   }
 
   if (state.status === 'error') {
     return (
-      <Centered>
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing.xxxl }}
+      >
         <Text
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
-          style={{ fontSize: 16, textAlign: 'center' }}
+          style={{ fontSize: font.size.body, textAlign: 'center', color: palette.textSecondary }}
         >
           {state.error}
         </Text>
-        <Pressable onPress={load} accessibilityRole="button" style={primaryBtn}>
-          <Text style={primaryTxt}>다시 시도</Text>
-        </Pressable>
-        <Pressable onPress={onBack} accessibilityRole="button" style={ghostBtn}>
-          <Text>다시 입력하기</Text>
-        </Pressable>
-      </Centered>
+        <View style={{ alignSelf: 'stretch', gap: spacing.sm }}>
+          <Button label={t('common.retry')} onPress={load} />
+          <Button label={t('common.backToInput')} onPress={onBack} variant="ghost" />
+        </View>
+      </View>
     );
   }
 
   const fortune = state.data!;
+  const premium = unlock.status === UNLOCK_STATES.UNLOCKED ? unlock.premium : null;
+  const unlockBusy =
+    unlock.status === UNLOCK_STATES.PURCHASING || unlock.status === UNLOCK_STATES.RESTORING;
 
-  const onShare = () => {
-    Share.share({ message: buildShareMessage(fortune) });
+  const onShare = async () => {
+    try {
+      haptics.fire('share');
+      await Share.share({ message: buildShareMessage(fortune) });
+    } catch {
+      dispatch({ type: 'UNLOCK_ERROR', message: t('result.shareError') });
+    }
   };
+
+  const handleUnlockError = (e: unknown) => {
+    haptics.fire('unlock-error');
+    const msg = errorMessage(e, FALLBACK_UNLOCK_ERROR);
+    if (msg === UNLOCK_NOT_READY) dispatch({ type: 'SERVER_PENDING' });
+    else dispatch({ type: 'UNLOCK_ERROR', message: msg });
+  };
+
+  const finishUnlock = (premiumData: NonNullable<typeof unlock.premium>) => {
+    haptics.fire('unlock-success');
+    dispatch({ type: 'UNLOCK_SUCCESS', premium: premiumData });
+  };
+
   const unlockByPurchase = async () => {
-    setUnlockMsg(null);
+    dispatch({ type: 'START_PURCHASE' });
     try {
       const { purchased, receipt } = await purchase(PRODUCTS.fullReading);
-      if (!purchased || !receipt) return;
-      setPremium(await unlockFortune(input, { type: 'iap', receipt }));
+      if (!purchased || !receipt) return dispatch({ type: 'PROOF_CANCELLED' });
+      finishUnlock(await unlockFortune(input, { type: 'iap', receipt }));
     } catch (e) {
-      setUnlockMsg(errorMessage(e, FALLBACK_UNLOCK_ERROR));
-    }
-  };
-  const unlockByAd = async () => {
-    setUnlockMsg(null);
-    try {
-      const { rewarded, token } = await showRewarded();
-      if (!rewarded || !token) return;
-      setPremium(await unlockFortune(input, { type: 'rewarded_ad', token }));
-    } catch (e) {
-      setUnlockMsg(errorMessage(e, FALLBACK_UNLOCK_ERROR));
+      handleUnlockError(e);
     }
   };
 
+  const unlockByAd = async () => {
+    dispatch({ type: 'START_AD' });
+    try {
+      const { rewarded, token } = await showRewarded();
+      if (!rewarded || !token) return dispatch({ type: 'PROOF_CANCELLED' });
+      finishUnlock(await unlockFortune(input, { type: 'rewarded_ad', token }));
+    } catch (e) {
+      handleUnlockError(e);
+    }
+  };
+
+  const restore = async () => {
+    dispatch({ type: 'START_RESTORE' });
+    try {
+      const { restored, receipt } = await restorePurchase(PRODUCTS.fullReading);
+      if (!restored || !receipt) return dispatch({ type: 'PROOF_CANCELLED' });
+      finishUnlock(await unlockFortune(input, { type: 'iap', receipt }));
+    } catch (e) {
+      handleUnlockError(e);
+    }
+  };
+
+  const lucky = lookup('result.lucky') as Record<string, string>;
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontSize: 13, color: '#8b95a1' }}>
+    <ScrollView contentContainerStyle={{ padding: spacing.xxl, gap: spacing.xl }}>
+      <View style={{ gap: spacing.md }}>
+        <Text style={{ fontSize: font.size.sm, color: palette.textMuted }}>
           {labelForType(fortune.meta.type)} · {formatDate(fortune.meta.date)}
         </Text>
         {fortune.acknowledgement?.trim() ? (
-          <View style={ackCard}>
+          <Card variant="accent">
             <Text
               accessibilityLiveRegion="polite"
-              style={{ fontSize: 15, lineHeight: 23, color: '#4e5968', fontStyle: 'italic' }}
+              style={{ fontSize: font.size.lg, lineHeight: lineHeight.body, color: palette.textSecondary, fontStyle: 'italic' }}
             >
               {fortune.acknowledgement}
             </Text>
-          </View>
+          </Card>
         ) : null}
-        <Text style={{ fontSize: 24, fontWeight: '800', lineHeight: 32 }}>{fortune.headline}</Text>
+        <Text style={{ fontSize: font.size.title, fontWeight: font.weight.heavy, lineHeight: lineHeight.headline, color: palette.textPrimary }}>
+          {fortune.headline}
+        </Text>
       </View>
 
       {fortune.sections.map((s, i) => (
         <Section key={i} title={s.title} body={s.body} />
       ))}
 
-      <Pressable onPress={onShare} accessibilityRole="button" style={shareBtn}>
-        <Text style={{ color: '#1b64da', fontWeight: '600' }}>친구에게 공유하기</Text>
-      </Pressable>
+      <Button variant="share" label={t('result.share')} onPress={onShare} />
 
       {fortune.locked && !premium && (
-        <View style={lockedCard}>
-          <Text style={{ fontWeight: '700', fontSize: 16 }}>🔒 상세 운세 · 행운 아이템 · 조언</Text>
-          <Text style={{ color: '#4e5968', fontSize: 14, fontStyle: 'italic' }}>
-            오늘의 흐름은 관계운과 조언에서 한 번 더 깊어져요.
+        <Card gap={spacing.md}>
+          <Text style={{ fontWeight: font.weight.bold, fontSize: font.size.body, color: palette.textPrimary }}>
+            {t('result.locked.title')}
           </Text>
-          <Text style={{ color: '#6b7684', fontSize: 13 }}>
-            전체 운세를 열어 행운의 색·숫자·방향까지 함께 받아보세요.
+          <Text style={{ color: palette.textSecondary, fontSize: font.size.md, fontStyle: 'italic' }}>
+            {t('result.locked.teaser')}
           </Text>
-          <Pressable onPress={unlockByPurchase} accessibilityRole="button" style={primaryBtn}>
-            <Text style={primaryTxt}>전체 운세 해제</Text>
-          </Pressable>
-          <Pressable onPress={unlockByAd} accessibilityRole="button" style={ghostBtn}>
-            <Text>광고 보고 무료로 해제</Text>
-          </Pressable>
-          {unlockMsg ? (
+          <Text style={{ color: palette.textTertiary, fontSize: font.size.sm }}>
+            {t('result.locked.sub')}
+          </Text>
+          <Button
+            label={t('result.locked.unlock')}
+            onPress={unlockByPurchase}
+            loading={unlock.status === UNLOCK_STATES.PURCHASING}
+            disabled={unlockBusy}
+            accessibilityHint={t('result.locked.sub')}
+          />
+          <Button
+            label={t('result.locked.unlockByAd')}
+            onPress={unlockByAd}
+            variant="ghost"
+            disabled={unlockBusy}
+          />
+          <Button
+            label={t('result.locked.restore')}
+            onPress={restore}
+            variant="ghost"
+            loading={unlock.status === UNLOCK_STATES.RESTORING}
+            disabled={unlockBusy}
+          />
+          {unlock.message ? (
             <Text
               accessibilityLiveRegion="polite"
-              accessibilityRole="alert"
-              style={{ color: '#f04452', fontSize: 13 }}
+              accessibilityRole={unlock.status === UNLOCK_STATES.ERROR ? 'alert' : undefined}
+              style={{
+                color: unlock.status === UNLOCK_STATES.ERROR ? palette.danger : palette.textTertiary,
+                fontSize: font.size.sm,
+              }}
             >
-              {unlockMsg}
+              {unlock.message}
             </Text>
           ) : null}
-        </View>
+          {canRetry(unlock) ? (
+            <Button label={t('common.retry')} onPress={() => dispatch({ type: 'RETRY' })} variant="ghost" />
+          ) : null}
+        </Card>
       )}
 
       {premium && (
@@ -166,66 +236,57 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
           {premium.sections.map((s, i) => (
             <Section key={i} title={s.title} body={s.body} />
           ))}
-          {premium.advice ? <Section title="오늘의 조언" body={premium.advice} /> : null}
-          {premium.luckyItems ? <LuckyItems items={premium.luckyItems} /> : null}
+          {premium.advice ? <Section title={t('result.adviceTitle')} body={premium.advice} /> : null}
+          {premium.luckyItems ? <LuckyItems items={premium.luckyItems} labels={lucky} /> : null}
         </>
       )}
 
-      <Pressable onPress={onBack} accessibilityRole="button" style={ghostBtn}>
-        <Text>다시 입력하기</Text>
-      </Pressable>
+      <Button label={t('common.backToInput')} onPress={onBack} variant="ghost" />
     </ScrollView>
   );
 }
 
 function Section({ title, body }: { title: string; body: string }) {
+  const { palette, spacing, font, lineHeight } = useTheme();
   return (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontWeight: '700', fontSize: 16 }}>{title}</Text>
-      <Text style={{ lineHeight: 23, color: '#333d4b' }}>{body}</Text>
+    <View style={{ gap: spacing.sm }}>
+      <Text style={{ fontWeight: font.weight.bold, fontSize: font.size.body, color: palette.textPrimary }}>
+        {title}
+      </Text>
+      <Text style={{ lineHeight: lineHeight.body, color: palette.textPrimary }}>{body}</Text>
     </View>
   );
 }
 
-function LuckyItems({ items }: { items: LuckyItemsData }) {
+function LuckyItems({ items, labels }: { items: LuckyItemsData; labels: Record<string, string> }) {
+  const { palette, spacing, radius, font } = useTheme();
   const chips = [
-    items.color && { k: '행운의 색', v: items.color },
-    items.number != null && { k: '행운의 숫자', v: String(items.number) },
-    items.direction && { k: '행운의 방향', v: items.direction },
+    items.color && { k: labels.color, v: items.color },
+    items.number != null && { k: labels.number, v: String(items.number) },
+    items.direction && { k: labels.direction, v: items.direction },
   ].filter(Boolean) as { k: string; v: string }[];
   if (chips.length === 0) return null;
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
       {chips.map((c) => (
         <View
           key={c.k}
-          style={{ backgroundColor: '#f2f4f6', borderRadius: 10, padding: 12, minWidth: 96 }}
+          style={{ backgroundColor: palette.surfaceWeak, borderRadius: radius.sm, padding: spacing.lg, minWidth: 96 }}
         >
-          <Text style={{ fontSize: 12, color: '#8b95a1' }}>{c.k}</Text>
-          <Text style={{ fontSize: 16, fontWeight: '700' }}>{c.v}</Text>
+          <Text style={{ fontSize: font.size.xs, color: palette.textMuted }}>{c.k}</Text>
+          <Text style={{ fontSize: font.size.body, fontWeight: font.weight.bold, color: palette.textPrimary }}>
+            {c.v}
+          </Text>
         </View>
       ))}
     </View>
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-      {children}
-    </View>
-  );
-}
+// LLM 호출 30-60s 동안 정지로 보이지 않게 회전. 메시지는 i18n 테이블에서.
+const LOAD_MESSAGES = (lookup('result.loadMessages') as string[]) ?? [];
 
-// LLM 호출 30-60s 동안 정지로 보이지 않게 회전. 첫 메시지는 대기 이유를 짧게 알려 이탈 ↓.
-const LOAD_MESSAGES = [
-  '천천히 살피는 게 더 정확해서요…',
-  '사주의 결을 하나씩 읽고 있어요…',
-  '마음에 닿을 한 줄을 다듬는 중이에요…',
-  '곧 보여드릴게요…',
-];
-
-function RotatingLoadMessage() {
+function RotatingLoadMessage({ color }: { color: string }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     // 5초 간격 — 너무 빠르면 산만, 너무 느리면 정지로 보임.
@@ -233,53 +294,8 @@ function RotatingLoadMessage() {
     return () => clearInterval(id);
   }, []);
   return (
-    <Text accessibilityLiveRegion="polite" style={{ color: '#6b7684', textAlign: 'center' }}>
+    <Text accessibilityLiveRegion="polite" style={{ color, textAlign: 'center' }}>
       {LOAD_MESSAGES[idx]}
     </Text>
   );
 }
-
-function labelForType(type: FreeFortune['meta']['type']) {
-  return { daily: '오늘의 운세', saju: '사주 총운', love: '애정운', wealth: '재물운' }[type];
-}
-
-// 'YYYY-MM-DD' → 'YYYY.MM.DD' — 한국어 UI 관습 + 동일 너비.
-function formatDate(iso: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.replace(/-/g, '.') : iso;
-}
-
-const primaryBtn = {
-  backgroundColor: '#3182f6',
-  padding: 14,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
-const primaryTxt = { color: 'white', fontWeight: '700' } as const;
-const ghostBtn = {
-  borderWidth: 1,
-  borderColor: '#dfe3e8',
-  padding: 14,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
-const shareBtn = {
-  borderWidth: 1,
-  borderColor: '#c6dafc',
-  backgroundColor: '#f4f8ff',
-  padding: 12,
-  borderRadius: 12,
-  alignItems: 'center',
-} as const;
-const lockedCard = {
-  borderWidth: 1,
-  borderColor: '#eaedf1',
-  borderRadius: 16,
-  padding: 16,
-  gap: 10,
-} as const;
-const ackCard = {
-  backgroundColor: '#f4f8ff',
-  borderRadius: 12,
-  paddingVertical: 12,
-  paddingHorizontal: 14,
-} as const;

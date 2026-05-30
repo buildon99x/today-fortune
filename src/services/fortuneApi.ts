@@ -1,8 +1,22 @@
 // 운세 백엔드 API 클라이언트.
 // 클라이언트는 생년월일 프로필만 전송한다 — 프롬프트는 서버가 만든다(LLM 무단 사용 방지).
 // 서버는 무료 부분만 반환한다. 프리미엄 상세는 서버에만 있고, 해제는 영수증 검증을 거친다.
+// fetch는 타임아웃/재시도/Abort를 감싼 resilient 버전을 주입한다(테스트는 fake request 주입).
+
+import { createResilientFetch, DEFAULT_FORTUNE_POLICY } from './fetchPolicy.mjs';
+import { fortuneErrorFor, unlockErrorFor } from './errorCatalog.mjs';
 
 const BASE = process.env.FORTUNE_BACKEND_URL ?? 'https://your-backend.example.com';
+
+type RequestFn = (url: string, options?: RequestInit) => Promise<Response>;
+
+const defaultRequest: RequestFn = createResilientFetch({
+  fetch: (url: string, options?: RequestInit) => fetch(url, options),
+  AbortController,
+  setTimeout,
+  clearTimeout,
+  policy: DEFAULT_FORTUNE_POLICY,
+});
 
 export type FortuneType = 'daily' | 'saju' | 'love' | 'wealth';
 
@@ -32,20 +46,22 @@ function toBody(input: FortuneRequest) {
   };
 }
 
-/** 무료 운세를 가져온다. */
-export async function fetchFortune(input: FortuneRequest): Promise<FreeFortune> {
-  const res = await fetch(`${BASE}/api/fortune`, {
+/** 무료 운세를 가져온다. request를 주입하면 테스트에서 네트워크 없이 검증 가능. */
+export async function fetchFortune(
+  input: FortuneRequest,
+  deps: { request?: RequestFn } = {},
+): Promise<FreeFortune> {
+  const request = deps.request ?? defaultRequest;
+  const res = await request(`${BASE}/api/fortune`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toBody(input)),
   });
-  if (res.status === 429)
-    throw new Error('지금은 많은 분이 같은 흐름을 찾고 있어요. 잠시 후 다시 닿아볼게요.');
   if (res.status === 400) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error ?? '입력을 한 번만 더 살펴봐 주실래요?');
+    throw new Error(fortuneErrorFor(400, data?.error));
   }
-  if (!res.ok) throw new Error('오늘의 흐름이 잠시 흐려졌어요. 조금 뒤에 다시 보여드릴게요.');
+  if (!res.ok) throw new Error(fortuneErrorFor(res.status));
   return res.json();
 }
 
@@ -56,20 +72,18 @@ export async function fetchFortune(input: FortuneRequest): Promise<FreeFortune> 
 export async function unlockFortune(
   input: FortuneRequest,
   proof: { type: 'iap'; receipt: string } | { type: 'rewarded_ad'; token: string },
+  deps: { request?: RequestFn } = {},
 ): Promise<{
   sections: { title: string; body: string }[];
   advice: string;
   luckyItems: LuckyItemsData | null;
 }> {
-  const res = await fetch(`${BASE}/api/fortune/unlock`, {
+  const request = deps.request ?? defaultRequest;
+  const res = await request(`${BASE}/api/fortune/unlock`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...toBody(input), proof }),
   });
-  if (res.status === 501) throw new Error('전체 운세는 곧 열어드릴 수 있게 준비 중이에요.');
-  if (!res.ok)
-    throw new Error(
-      '전체 운세를 펼치는 중에 흐름이 잠깐 흐트러졌어요. 다시 한 번 시도해 주실래요?',
-    );
+  if (!res.ok) throw new Error(unlockErrorFor(res.status));
   return res.json();
 }
