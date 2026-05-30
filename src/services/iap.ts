@@ -32,6 +32,10 @@ export async function isUnlocked(_productId: ProductId): Promise<boolean> {
 /**
  * 구매 복원. 복원 성공 시 서버 재검증용 receipt를 반환한다.
  * (실 SDK의 restorePurchases는 과거 영수증을 돌려주므로 unlock 흐름을 재사용할 수 있다.)
+ *
+ * TODO(검수): SDK 연동 전까지 항상 {restored:false} — ResultScreen은 이때 "복원할 구매 없음"을
+ *   안내한다. 실 결제 출시 시 본문을 교체하고, 미연동 빌드라면 복원 버튼 노출을 SDK 가용성에
+ *   게이트하는 것을 고려할 것.
  */
 export async function restorePurchase(
   _productId: ProductId,

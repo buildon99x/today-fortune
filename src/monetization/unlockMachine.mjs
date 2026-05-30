@@ -9,6 +9,7 @@ const t = createTranslator();
 export const UNLOCK_STATES = {
   IDLE: 'idle',
   PURCHASING: 'purchasing',
+  ADVERTISING: 'advertising',
   RESTORING: 'restoring',
   PENDING: 'pending',
   UNLOCKED: 'unlocked',
@@ -23,12 +24,15 @@ export function unlockReducer(state, action) {
     case 'START_PURCHASE':
       return { status: UNLOCK_STATES.PURCHASING, message: t('result.purchasing'), premium: null };
     case 'START_AD':
-      return { status: UNLOCK_STATES.PURCHASING, message: t('result.purchasing'), premium: null };
+      return { status: UNLOCK_STATES.ADVERTISING, message: t('result.advertising'), premium: null };
     case 'START_RESTORE':
       return { status: UNLOCK_STATES.RESTORING, message: t('result.restoring'), premium: null };
     case 'PROOF_CANCELLED':
       // 사용자가 결제/광고를 닫음 — 조용히 사라지지 않고 부드럽게 안내.
       return { status: UNLOCK_STATES.IDLE, message: t('result.cancelled'), premium: null };
+    case 'RESTORE_EMPTY':
+      // 복원할 구매가 없음 — "취소"가 아니므로 복원 전용 중립 안내.
+      return { status: UNLOCK_STATES.IDLE, message: t('result.restoreNone'), premium: null };
     case 'UNLOCK_SUCCESS':
       return { status: UNLOCK_STATES.UNLOCKED, message: null, premium: action.premium };
     case 'SERVER_PENDING':

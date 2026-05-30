@@ -53,8 +53,10 @@ export const ko = {
     ],
     typeLabels: { daily: '오늘의 운세', saju: '사주 총운', love: '애정운', wealth: '재물운' },
     purchasing: '전체 운세를 준비하고 있어요…',
+    advertising: '광고를 준비하고 있어요…',
     restoring: '이전 구매를 확인하고 있어요…',
     cancelled: '해제를 멈췄어요. 준비되면 언제든 다시 열 수 있어요.',
+    restoreNone: '복원할 구매가 없어요. 전체 운세를 열면 바로 받아보실 수 있어요.',
   },
   errors: {
     // 톤: 경고어("실패/오류") 대신 "흐림" 은유 + 부드러운 재시도 요청.

@@ -8,14 +8,11 @@ export const INPUT_STORAGE_KEY = 'today-fortune:lastInput:v1';
 
 const ALLOWED_KEYS = ['year', 'month', 'day', 'gender', 'type'];
 
+// 허용 키만 pick(spread 금지) — 단일 진실(ALLOWED_KEYS) 기반이라 추가 키가 새어나갈 수 없다.
 export function serializeInput(input) {
-  return JSON.stringify({
-    year: input.year,
-    month: input.month,
-    day: input.day,
-    gender: input.gender,
-    type: input.type,
-  });
+  const out = {};
+  for (const k of ALLOWED_KEYS) out[k] = input[k];
+  return JSON.stringify(out);
 }
 
 /** 저장 문자열 → 유효한 BirthInput 또는 null. 절대 throw하지 않는다. */

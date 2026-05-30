@@ -34,7 +34,6 @@ import { FortuneSkeleton } from '../components/Skeleton';
 
 const t = createTranslator();
 const lookup = createLookup();
-const UNLOCK_NOT_READY = t('errors.unlockNotReady');
 
 type LoadState = { status: 'loading' | 'ready' | 'error'; data?: FreeFortune; error?: string };
 
@@ -48,6 +47,7 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
   const haptics = useHaptics();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [unlock, dispatch] = useReducer(unlockReducer, initialUnlockState);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setState({ status: 'loading' });
@@ -97,22 +97,27 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
   const fortune = state.data!;
   const premium = unlock.status === UNLOCK_STATES.UNLOCKED ? unlock.premium : null;
   const unlockBusy =
-    unlock.status === UNLOCK_STATES.PURCHASING || unlock.status === UNLOCK_STATES.RESTORING;
+    unlock.status === UNLOCK_STATES.PURCHASING ||
+    unlock.status === UNLOCK_STATES.ADVERTISING ||
+    unlock.status === UNLOCK_STATES.RESTORING;
 
   const onShare = async () => {
+    setShareError(null);
     try {
       haptics.fire('share');
       await Share.share({ message: buildShareMessage(fortune) });
     } catch {
-      dispatch({ type: 'UNLOCK_ERROR', message: t('result.shareError') });
+      // 공유는 해제와 무관한 별도 관심사 — 자체 에러 상태로 공유 버튼 옆에 표시.
+      setShareError(t('result.shareError'));
     }
   };
 
   const handleUnlockError = (e: unknown) => {
     haptics.fire('unlock-error');
-    const msg = errorMessage(e, FALLBACK_UNLOCK_ERROR);
-    if (msg === UNLOCK_NOT_READY) dispatch({ type: 'SERVER_PENDING' });
-    else dispatch({ type: 'UNLOCK_ERROR', message: msg });
+    // 문구 비교 대신 HTTP status로 분기 — 501은 "준비 중"(PENDING).
+    const status = (e as { status?: number } | null)?.status;
+    if (status === 501) return dispatch({ type: 'SERVER_PENDING' });
+    dispatch({ type: 'UNLOCK_ERROR', message: errorMessage(e, FALLBACK_UNLOCK_ERROR) });
   };
 
   const finishUnlock = (premiumData: NonNullable<typeof unlock.premium>) => {
@@ -146,7 +151,8 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
     dispatch({ type: 'START_RESTORE' });
     try {
       const { restored, receipt } = await restorePurchase(PRODUCTS.fullReading);
-      if (!restored || !receipt) return dispatch({ type: 'PROOF_CANCELLED' });
+      // 복원 결과가 없으면 "취소"가 아니라 "복원할 구매 없음" 안내(실 구매자 혼동 방지).
+      if (!restored || !receipt) return dispatch({ type: 'RESTORE_EMPTY' });
       finishUnlock(await unlockFortune(input, { type: 'iap', receipt }));
     } catch (e) {
       handleUnlockError(e);
@@ -181,6 +187,15 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
       ))}
 
       <Button variant="share" label={t('result.share')} onPress={onShare} />
+      {shareError ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          style={{ color: palette.danger, fontSize: font.size.sm, textAlign: 'center' }}
+        >
+          {shareError}
+        </Text>
+      ) : null}
 
       {fortune.locked && !premium && (
         <Card gap={spacing.md}>
@@ -204,6 +219,7 @@ export function ResultScreen({ input, onBack }: { input: BirthInput; onBack: () 
             label={t('result.locked.unlockByAd')}
             onPress={unlockByAd}
             variant="ghost"
+            loading={unlock.status === UNLOCK_STATES.ADVERTISING}
             disabled={unlockBusy}
           />
           <Button

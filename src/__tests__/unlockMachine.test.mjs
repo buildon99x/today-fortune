@@ -40,3 +40,18 @@ test('복원 시작 → RESTORING', () => {
   const s = unlockReducer(initialUnlockState, { type: 'START_RESTORE' });
   assert.equal(s.status, UNLOCK_STATES.RESTORING);
 });
+
+test('광고 시작 → ADVERTISING(구매와 구분된 상태)', () => {
+  const s = unlockReducer(initialUnlockState, { type: 'START_AD' });
+  assert.equal(s.status, UNLOCK_STATES.ADVERTISING);
+  assert.notEqual(s.status, UNLOCK_STATES.PURCHASING);
+  assert.ok(s.message && s.message.length > 0);
+});
+
+test('복원 결과 없음 → IDLE + 복원 전용 안내(취소와 구분)', () => {
+  const cancelled = unlockReducer(initialUnlockState, { type: 'PROOF_CANCELLED' });
+  const empty = unlockReducer(initialUnlockState, { type: 'RESTORE_EMPTY' });
+  assert.equal(empty.status, UNLOCK_STATES.IDLE);
+  assert.ok(empty.message && empty.message.length > 0);
+  assert.notEqual(empty.message, cancelled.message, '복원 없음과 취소는 다른 문구');
+});

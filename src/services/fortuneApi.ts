@@ -84,6 +84,11 @@ export async function unlockFortune(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...toBody(input), proof }),
   });
-  if (!res.ok) throw new Error(unlockErrorFor(res.status));
+  if (!res.ok) {
+    // HTTP status를 에러에 실어 보낸다 — 호출부가 문구 비교가 아닌 status로 분기(501→준비 중).
+    const err = new Error(unlockErrorFor(res.status)) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
