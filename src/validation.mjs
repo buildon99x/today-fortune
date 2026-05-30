@@ -3,6 +3,18 @@
 
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
+// 허용 enum — App.tsx의 BirthInput과 동일 집합. inputStore·HomeScreen이 재사용.
+export const GENDERS = ['male', 'female', 'unspecified'];
+export const FORTUNE_TYPES = ['daily', 'saju', 'love', 'wealth'];
+
+export function isValidGender(gender) {
+  return GENDERS.includes(gender);
+}
+
+export function isValidType(type) {
+  return FORTUNE_TYPES.includes(type);
+}
+
 export function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
