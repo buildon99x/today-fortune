@@ -1,8 +1,7 @@
 // 버튼 래퍼 — 화면이 RN Pressable을 직접 쓰지 않게 해 추후 TDS Button 교체를 국소화한다.
 // variant: primary(브랜드)/ghost(외곽선)/share(연파랑). loading 시 스피너 + 비활성.
 
-import { Pressable, Text, Animated, ActivityIndicator, View } from 'react-native';
-import type { ReactNode } from 'react';
+import { Pressable, Text, Animated, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 
@@ -15,7 +14,6 @@ export function Button({
   disabled = false,
   loading = false,
   accessibilityHint,
-  children,
 }: {
   label?: string;
   onPress: () => void;
@@ -23,7 +21,6 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   accessibilityHint?: string;
-  children?: ReactNode;
 }) {
   const { palette, spacing, radius, font } = useTheme();
   const { scale, onPressIn, onPressOut } = usePressFeedback();
@@ -69,8 +66,6 @@ export function Button({
       >
         {loading ? (
           <ActivityIndicator color={textColor} />
-        ) : children ? (
-          <View>{children}</View>
         ) : (
           <Text style={{ color: textColor, fontWeight: font.weight.bold, fontSize: font.size.body }}>
             {label}

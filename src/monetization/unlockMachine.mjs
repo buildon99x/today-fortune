@@ -18,7 +18,7 @@ export const UNLOCK_STATES = {
 
 export const initialUnlockState = { status: UNLOCK_STATES.IDLE, message: null, premium: null };
 
-/** @returns {{ status: string, message: string|null, premium: object|null, retryAction?: string }} */
+/** @returns {{ status: string, message: string|null, premium: object|null }} */
 export function unlockReducer(state, action) {
   switch (action.type) {
     case 'START_PURCHASE':
@@ -46,7 +46,6 @@ export function unlockReducer(state, action) {
         status: UNLOCK_STATES.ERROR,
         message: action.message || t('errors.unlockFallback'),
         premium: null,
-        retryAction: action.retryAction ?? null,
       };
     case 'RETRY':
       return initialUnlockState;
